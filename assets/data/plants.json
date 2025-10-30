@@ -1,0 +1,50 @@
+[
+  {
+    "commonName": "Money Plant",
+    "scientificName": "Epipremnum aureum",
+    "description": "Money Plant is a hardy tropical vine cherished for its air-purifying ability and versatility across Indian climates.",
+    "species": "Araceae",
+    "origin": "Mo'orea, French Polynesia",
+    "soilGuide": "Mix 50% coco peat, 30% perlite, and 20% organic compost. Add pieces of charcoal to keep the mix airy for trailing roots.",
+    "wateringGuide": "Water with 15% of the pot volume once a week in winter and twice a week in summer. Mist leaves in dry zones to maintain 50-60% humidity.",
+    "careGuide": "Train vines along a moss pole for larger leaves. Wipe foliage every fortnight to remove dust and improve photosynthesis.",
+    "placementGuide": "Performs best in bright indirect light. Tolerates low light indoors but colours fade. Maintain temperatures between 20-34°C.",
+    "diseases": [],
+    "generalMedicines": ["Organic insecticidal soap for sap-sucking pests."],
+    "faqs": [],
+    "isIndoorFriendly": true,
+    "isOutdoorFriendly": true,
+    "categories": ["Climber", "Air Purifier", "Vastu"],
+    "localTips": ["For Delhi summers, mist twice daily to prevent leaf burn."],
+    "propagationGuide": "Root cuttings in water or soil. For soil, use a moist mix of coco peat and perlite, cover with a plastic bag to retain humidity, and keep in bright shade.",
+    "communityPrompt": "Post creative trellis ideas or jar setups for your Money Plant to inspire others.",
+    "careChecklist": [
+      {"title": "Watering", "description": "Water when top inch is dry.", "frequency": "Weekly"},
+      {"title": "Misting", "description": "Mist leaves in dry weather.", "frequency": "2-3 times/week"}
+    ]
+  },
+  {
+    "commonName": "Aloe Vera",
+    "scientificName": "Aloe barbadensis miller",
+    "description": "Succulent herb valued for its medicinal gel and drought tolerance; great for sunny windowsills and balconies.",
+    "species": "Asphodelaceae",
+    "origin": "Arabian Peninsula (widely naturalized in India)",
+    "soilGuide": "Use a gritty cactus mix: 50% coarse sand, 30% garden soil, 20% compost. Add crushed brick or perlite for drainage.",
+    "wateringGuide": "Water with ~10% of pot volume only when the top 2–3 inches are dry. In winter, water lightly every 3–4 weeks.",
+    "careGuide": "Give bright light; rotate monthly for even growth. Remove pups with a clean knife and let cut ends callus before potting.",
+    "placementGuide": "Full sun to bright light; tolerates heat. Ideal temps 18–38°C. Avoid stagnant indoor corners.",
+    "diseases": [],
+    "generalMedicines": ["Preventive neem oil once in 20–30 days in monsoon."],
+    "faqs": [],
+    "isIndoorFriendly": true,
+    "isOutdoorFriendly": true,
+    "categories": ["Succulent", "Medicinal", "Low Water"],
+    "localTips": ["North Indian winters: protect from frost; keep soil nearly dry."],
+    "propagationGuide": "Detach pups with at least 3 leaves; air-dry 24–48 hours; pot in dry mix and water after 5–7 days.",
+    "communityPrompt": "Share before/after of Aloe pup divisions and your fastest rooting tricks.",
+    "careChecklist": [
+      {"title": "Watering", "description": "Water only when soil is dry.", "frequency": "Every 3-4 weeks"},
+      {"title": "Rotation", "description": "Rotate for even growth.", "frequency": "Monthly"}
+    ]
+  }
+]

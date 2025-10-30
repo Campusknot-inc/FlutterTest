@@ -1,10 +1,37 @@
 import 'package:flutter/material.dart';
 
-import 'data/sample_plants.dart';
+import 'data/flowers.dart';
+import 'data/vegetables.dart' as veg;
+import 'data/fruits.dart';
+import 'data/herbs.dart';
+import 'data/trees.dart';
+import 'data/indoor_plants.dart';
+import 'data/seasonal_plants.dart';
 import 'localization.dart';
 import 'models/app_language.dart';
 import 'models/plant.dart';
 import 'widgets/plant_detail_sections.dart';
+import 'widgets/splash_screen.dart';
+
+// Returns a deduplicated list of plants by commonName + scientificName
+List<Plant> deduplicatePlants(List<Plant> plants) {
+  final Map<String, Plant> unique = {};
+  for (final plant in plants) {
+    unique['${plant.commonName}|${plant.scientificName}'] = plant;
+  }
+  return unique.values.toList();
+}
+
+// Combined list of all plants from different categories, deduplicated by commonName + scientificName
+final List<Plant> allPlants = deduplicatePlants([
+  ...flowers,
+  ...veg.vegetables,
+  ...fruits,
+  ...herbs,
+  ...trees,
+  ...indoorPlants,
+  ...seasonalPlants,
+]);
 
 void main() {
   runApp(const GreenGuruApp());
@@ -19,6 +46,19 @@ class GreenGuruApp extends StatefulWidget {
 
 class _GreenGuruAppState extends State<GreenGuruApp> {
   AppLanguage _language = AppLanguage.english;
+  bool _showSplash = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Splash will be hidden after animation in SplashScreen
+  }
+
+  void _onSplashEnd() {
+    setState(() {
+      _showSplash = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,10 +71,12 @@ class _GreenGuruAppState extends State<GreenGuruApp> {
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFF7FDF8),
       ),
-      home: GreenGuruHome(
-        language: _language,
-        onLanguageChanged: (value) => setState(() => _language = value),
-      ),
+      home: _showSplash
+          ? SplashScreen(onAnimationEnd: _onSplashEnd)
+          : GreenGuruHome(
+              language: _language,
+              onLanguageChanged: (value) => setState(() => _language = value),
+            ),
     );
   }
 }
@@ -57,7 +99,43 @@ class _GreenGuruHomeState extends State<GreenGuruHome> {
   String _searchQuery = '';
   bool _filterIndoor = false;
   bool _filterOutdoor = false;
+  String _selectedCategory = 'All';
   final Set<String> _favorites = <String>{};
+
+  // Dynamically generated categories from allPlants
+  late final List<String> _categories;
+
+  final Map<String, int> _categoryCounts = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _categories = [
+      'All',
+      ...{
+        for (final plant in allPlants)
+          if (plant.categories.isNotEmpty) plant.categories.first,
+      }.toList()..sort(),
+    ];
+    _computeCategoryCounts();
+  }
+
+  void _computeCategoryCounts() {
+    _categoryCounts.clear();
+    for (final category in _categories) {
+      if (category == 'All') {
+        _categoryCounts[category] = allPlants.length;
+      } else {
+        _categoryCounts[category] = allPlants
+            .where(
+              (plant) =>
+                  plant.categories.isNotEmpty &&
+                  plant.categories.first == category,
+            )
+            .length;
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,10 +146,19 @@ class _GreenGuruHomeState extends State<GreenGuruHome> {
       appBar: AppBar(
         title: Text(localization.text('appTitle')),
         actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: Center(
+              child: Chip(
+                avatar: const Icon(Icons.local_florist, size: 16),
+                label: Text('Total: ${allPlants.length}'),
+              ),
+            ),
+          ),
           IconButton(
             tooltip: localization.text('favorites'),
             onPressed: () {
-              final favorites = samplePlants
+              final favorites = allPlants
                   .where((plant) => _favorites.contains(plant.commonName))
                   .map((plant) => plant.commonName)
                   .join(', ');
@@ -113,11 +200,14 @@ class _GreenGuruHomeState extends State<GreenGuruHome> {
           ),
           TextButton(
             onPressed: () {
-              final next =
-                  widget.language == AppLanguage.english ? AppLanguage.hindi : AppLanguage.english;
+              final next = widget.language == AppLanguage.english
+                  ? AppLanguage.hindi
+                  : AppLanguage.english;
               widget.onLanguageChanged(next);
             },
-            child: Text(AppLocalizations(widget.language).text('languageToggle')),
+            child: Text(
+              AppLocalizations(widget.language).text('languageToggle'),
+            ),
           ),
         ],
       ),
@@ -143,13 +233,15 @@ class _GreenGuruHomeState extends State<GreenGuruHome> {
                   FilterChip(
                     label: Text(localization.text('indoor')),
                     selected: _filterIndoor,
-                    onSelected: (value) => setState(() => _filterIndoor = value),
+                    onSelected: (value) =>
+                        setState(() => _filterIndoor = value),
                   ),
                   const SizedBox(width: 8),
                   FilterChip(
                     label: Text(localization.text('outdoor')),
                     selected: _filterOutdoor,
-                    onSelected: (value) => setState(() => _filterOutdoor = value),
+                    onSelected: (value) =>
+                        setState(() => _filterOutdoor = value),
                   ),
                   const SizedBox(width: 8),
                   TextButton.icon(
@@ -157,11 +249,36 @@ class _GreenGuruHomeState extends State<GreenGuruHome> {
                       _filterIndoor = false;
                       _filterOutdoor = false;
                       _searchQuery = '';
+                      _selectedCategory = 'All';
                     }),
                     icon: const Icon(Icons.clear),
                     label: Text(localization.text('clear')),
                   ),
                 ],
+              ),
+              const SizedBox(height: 12),
+              // Category tabs
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: _categories.map((category) {
+                    final isSelected = _selectedCategory == category;
+                    final count = _categoryCounts[category] ?? 0;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        label: Text('$category ($count)'),
+                        selected: isSelected,
+                        onSelected: (value) =>
+                            setState(() => _selectedCategory = category),
+                        selectedColor: Theme.of(
+                          context,
+                        ).colorScheme.primary.withOpacity(0.2),
+                        checkmarkColor: Theme.of(context).colorScheme.primary,
+                      ),
+                    );
+                  }).toList(),
+                ),
               ),
               const SizedBox(height: 12),
               if (plants.isEmpty)
@@ -188,6 +305,21 @@ class _GreenGuruHomeState extends State<GreenGuruHome> {
                         elevation: 1,
                         margin: const EdgeInsets.symmetric(vertical: 8),
                         child: ListTile(
+                          leading:
+                              (plant.image != null && plant.image!.isNotEmpty)
+                              ? CircleAvatar(
+                                  radius: 28,
+                                  backgroundImage: AssetImage(plant.image!),
+                                  backgroundColor: Colors.grey[200],
+                                )
+                              : CircleAvatar(
+                                  radius: 28,
+                                  backgroundColor: Colors.grey[200],
+                                  child: Icon(
+                                    Icons.image_not_supported,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
                           contentPadding: const EdgeInsets.all(16),
                           title: Text(plant.commonName),
                           subtitle: Column(
@@ -199,19 +331,22 @@ class _GreenGuruHomeState extends State<GreenGuruHome> {
                                 spacing: 8,
                                 runSpacing: 4,
                                 children: plant.categories
-                                    .map((category) => Chip(
-                                          label: Text(category),
-                                        ))
+                                    .map(
+                                      (category) => Chip(label: Text(category)),
+                                    )
                                     .toList(),
                               ),
                             ],
                           ),
                           trailing: IconButton(
                             icon: Icon(
-                              isFavorite ? Icons.favorite : Icons.favorite_border,
+                              isFavorite
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
                               color: isFavorite ? Colors.red : null,
                             ),
-                            onPressed: () => _toggleFavorite(plant, localization),
+                            onPressed: () =>
+                                _toggleFavorite(plant, localization),
                           ),
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute(
@@ -242,12 +377,24 @@ class _GreenGuruHomeState extends State<GreenGuruHome> {
   }
 
   List<Plant> _filteredPlants() {
-    return samplePlants.where((plant) {
-      final matchesQuery = plant.commonName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          plant.scientificName.toLowerCase().contains(_searchQuery.toLowerCase());
+    return allPlants.where((plant) {
+      final matchesQuery =
+          plant.commonName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          plant.scientificName.toLowerCase().contains(
+            _searchQuery.toLowerCase(),
+          );
       final matchesIndoor = !_filterIndoor || plant.isIndoorFriendly;
       final matchesOutdoor = !_filterOutdoor || plant.isOutdoorFriendly;
-      return matchesQuery && matchesIndoor && matchesOutdoor;
+
+      // Category filtering
+      bool matchesCategory = true;
+      if (_selectedCategory != 'All') {
+        matchesCategory =
+            plant.categories.isNotEmpty &&
+            plant.categories.first == _selectedCategory;
+      }
+
+      return matchesQuery && matchesIndoor && matchesOutdoor && matchesCategory;
     }).toList();
   }
 
@@ -354,9 +501,7 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
             spacing: 8,
             runSpacing: 4,
             children: plant.categories
-                .map((category) => Chip(
-                      label: Text(category),
-                    ))
+                .map((category) => Chip(label: Text(category)))
                 .toList(),
           ),
           const SizedBox(height: 16),
@@ -459,8 +604,12 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
           const SizedBox(height: 12),
           ListTile(
             contentPadding: const EdgeInsets.all(12),
-            tileColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            tileColor: theme.colorScheme.surfaceContainerHighest.withOpacity(
+              0.3,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             leading: const Icon(Icons.camera_alt_outlined),
             title: Text(localization.text('aiIdentify')),
             subtitle: Text(localization.text('uploadPhoto')),
