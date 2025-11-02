@@ -12,6 +12,7 @@ import 'models/app_language.dart';
 import 'models/plant.dart';
 import 'widgets/plant_detail_sections.dart';
 import 'widgets/splash_screen.dart';
+import 'screens/filter_screen.dart';
 
 // Returns a deduplicated list of plants by commonName + scientificName
 List<Plant> deduplicatePlants(List<Plant> plants) {
@@ -101,11 +102,14 @@ class _GreenGuruHomeState extends State<GreenGuruHome> {
   bool _filterOutdoor = false;
   String _selectedCategory = 'All';
   final Set<String> _favorites = <String>{};
+  bool _showFavoritesOnly = false;
 
   // Dynamically generated categories from allPlants
   late final List<String> _categories;
 
   final Map<String, int> _categoryCounts = {};
+
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -118,6 +122,13 @@ class _GreenGuruHomeState extends State<GreenGuruHome> {
       }.toList()..sort(),
     ];
     _computeCategoryCounts();
+    _searchController.addListener(() {
+      if (_searchController.text != _searchQuery) {
+        setState(() {
+          _searchQuery = _searchController.text;
+        });
+      }
+    });
   }
 
   void _computeCategoryCounts() {
@@ -135,6 +146,12 @@ class _GreenGuruHomeState extends State<GreenGuruHome> {
             .length;
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -158,24 +175,16 @@ class _GreenGuruHomeState extends State<GreenGuruHome> {
           IconButton(
             tooltip: localization.text('favorites'),
             onPressed: () {
-              final favorites = allPlants
-                  .where((plant) => _favorites.contains(plant.commonName))
-                  .map((plant) => plant.commonName)
-                  .join(', ');
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    favorites.isEmpty
-                        ? localization.text('favorites')
-                        : '${localization.text('favorites')}: $favorites',
-                  ),
-                ),
-              );
+              setState(() {
+                _showFavoritesOnly = !_showFavoritesOnly;
+              });
             },
             icon: Stack(
               clipBehavior: Clip.none,
               children: [
-                const Icon(Icons.favorite_outline),
+                Icon(
+                  _showFavoritesOnly ? Icons.favorite : Icons.favorite_outline,
+                ),
                 if (_favorites.isNotEmpty)
                   Positioned(
                     right: -2,
@@ -198,17 +207,16 @@ class _GreenGuruHomeState extends State<GreenGuruHome> {
               ],
             ),
           ),
-          TextButton(
+          IconButton(
+            tooltip: 'Filter',
+            icon: const Icon(Icons.filter_list),
             onPressed: () {
-              final next = widget.language == AppLanguage.english
-                  ? AppLanguage.hindi
-                  : AppLanguage.english;
-              widget.onLanguageChanged(next);
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const FilterScreen()));
             },
-            child: Text(
-              AppLocalizations(widget.language).text('languageToggle'),
-            ),
           ),
+          // Removed language toggle button
         ],
       ),
       body: SafeArea(
@@ -218,43 +226,22 @@ class _GreenGuruHomeState extends State<GreenGuruHome> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               TextField(
-                onChanged: (value) => setState(() => _searchQuery = value),
+                controller: _searchController,
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.search),
                   hintText: localization.text('searchHint'),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                          },
+                        )
+                      : null,
                 ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  FilterChip(
-                    label: Text(localization.text('indoor')),
-                    selected: _filterIndoor,
-                    onSelected: (value) =>
-                        setState(() => _filterIndoor = value),
-                  ),
-                  const SizedBox(width: 8),
-                  FilterChip(
-                    label: Text(localization.text('outdoor')),
-                    selected: _filterOutdoor,
-                    onSelected: (value) =>
-                        setState(() => _filterOutdoor = value),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton.icon(
-                    onPressed: () => setState(() {
-                      _filterIndoor = false;
-                      _filterOutdoor = false;
-                      _searchQuery = '';
-                      _selectedCategory = 'All';
-                    }),
-                    icon: const Icon(Icons.clear),
-                    label: Text(localization.text('clear')),
-                  ),
-                ],
               ),
               const SizedBox(height: 12),
               // Category tabs
@@ -377,7 +364,12 @@ class _GreenGuruHomeState extends State<GreenGuruHome> {
   }
 
   List<Plant> _filteredPlants() {
-    return allPlants.where((plant) {
+    final baseList = _showFavoritesOnly
+        ? allPlants
+              .where((plant) => _favorites.contains(plant.commonName))
+              .toList()
+        : allPlants;
+    return baseList.where((plant) {
       final matchesQuery =
           plant.commonName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           plant.scientificName.toLowerCase().contains(
@@ -602,36 +594,38 @@ class _PlantDetailPageState extends State<PlantDetailPage> {
             ),
           ),
           const SizedBox(height: 12),
-          ListTile(
-            contentPadding: const EdgeInsets.all(12),
-            tileColor: theme.colorScheme.surfaceContainerHighest.withOpacity(
-              0.3,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            leading: const Icon(Icons.camera_alt_outlined),
-            title: Text(localization.text('aiIdentify')),
-            subtitle: Text(localization.text('uploadPhoto')),
-            onTap: () {
-              showDialog<void>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: Text(localization.text('aiIdentify')),
-                  content: const Text(
-                    'Image-based plant identification will use on-device ML or cloud APIs. Integrate TensorFlow Lite or Google ML Kit as a next step.',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('OK'),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 12),
+          // PlantDetailSection(
+          //   title: localization.text('aiIdentify'),
+          //   content: ListTile(
+          //     contentPadding: const EdgeInsets.all(12),
+          //     tileColor: theme.colorScheme.surfaceContainerHighest.withOpacity(
+          //       0.3,
+          //     ),
+          //     shape: RoundedRectangleBorder(
+          //       borderRadius: BorderRadius.circular(16),
+          //     ),
+          //     leading: const Icon(Icons.camera_alt_outlined),
+          //     title: Text(localization.text('aiIdentify')),
+          //     subtitle: Text(localization.text('uploadPhoto')),
+          //     onTap: () {
+          //       showDialog<void>(
+          //         context: context,
+          //         builder: (context) => AlertDialog(
+          //           title: Text(localization.text('aiIdentify')),
+          //           content: const Text(
+          //             'Image-based plant identification will use on-device ML or cloud APIs. Integrate TensorFlow Lite or Google ML Kit as a next step.',
+          //           ),
+          //           actions: [
+          //             TextButton(
+          //               onPressed: () => Navigator.of(context).pop(),
+          //               child: const Text('OK'),
+          //             ),
+          //           ],
+          //         ),
+          //       );
+          //     },
+          //   ),
+          // ),
           PlantDetailSection(
             title: localization.text('community'),
             content: Column(
